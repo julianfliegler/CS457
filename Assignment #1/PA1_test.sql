@@ -4,8 +4,6 @@ CREATE DATABASE db_2;
 DROP DATABASE db_2;
 DROP DATABASE db_2;
 CREATE DATABASE db_2;
-
-
 USE db_1;
 CREATE TABLE tbl_1 (a1 int, a2 varchar(20));
 CREATE TABLE tbl_1 (a3 float, a4 char(20));
@@ -21,5 +19,4 @@ USE db_2;
 SELECT * FROM tbl_1;
 CREATE TABLE tbl_1 (a3 float, a4 char(20));
 SELECT * FROM tbl_1;
-
 .EXIT
