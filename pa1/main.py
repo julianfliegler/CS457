@@ -39,10 +39,16 @@ def getInputVar(str, index):
 while(userInput != ".EXIT"):
     try:
         userInput = input().strip()
-        print("\n-- " + userInput)
-        # make sure input ends in ;
+
+        if(userInput == ""):
+            continue
+        if(userInput.startswith("--")):
+            continue
         if(not userInput.endswith(";") and userInput != ".EXIT"):
             raise NoSemicolonExcept
+
+        print("\n-- " + userInput)
+        
     except NoSemicolonExcept:
         print(bcolors.FAIL + "Command must end in semicolon." + bcolors.ENDC)
     except EOFError:
