@@ -132,5 +132,24 @@ while(userInput != ".EXIT"):
                 print(bcolors.OKGREEN + "Table " + tableName + " modified." + bcolors.ENDC)
             except FileNotFoundError:
                 print(bcolors.FAIL + "!Failed to modify " + tableName + " because it does not exist." + bcolors.ENDC)
+
+        elif("insert into" in userInput):
+            try:
+                tableName = getInputVar(userInput, 2)
+                print(tableName)
+                # after "VALUES", take all characters except ";" 
+                # get rid of commas
+                colNames = userInput.split("values")[1][1:-2].replace(",", "").replace("'", "").split("\t")
+                #print(colNames)
+                for x in colNames:
+                    x.strip()
+                    print(x)
+                    # create list
+                    (x) = []
+                # with open(tableName, "a") as file: # append file
+                #     file.write(tableContent)
+                # print(bcolors.OKGREEN + "1 new record inserted." + bcolors.ENDC)
+            except:
+                print("Error in insertion")
 else:
     print(bcolors.OKGREEN + "All done." + bcolors.ENDC)
