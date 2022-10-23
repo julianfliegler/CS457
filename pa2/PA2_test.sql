@@ -1,7 +1,8 @@
 --CS 457 PA2 test script
 
-CREATE DATABASE CS457_PA2;
-USE CS457_PA2;
+-- CREATE DATABASE CS457_PA2;
+-- USE CS457_PA2;
+DROP TABLE Product; 
 CREATE TABLE Product (pid int, name varchar(20), price float);
 
 insert into Product values(1,	'Gizmo',      	19.99);
