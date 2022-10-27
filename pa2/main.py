@@ -3,6 +3,7 @@
 # Oct 2022
 
 import os
+import string
 import sys
 
 userInput = ""
@@ -36,6 +37,19 @@ def getInputVar(str, index):
     inputVar = str[:-1].split()[index]
     return inputVar
 
+def getSelectedCols(inputStr, start, end):
+    return (inputStr.casefold().split(start))[1].split(end)[0].split(", ")
+
+def getInputAfterStr(inputStr, end):
+    return inputStr[:-1].split(end)[1].split(" ")[0]
+
+def getHeader(f):
+    # get first line (header)
+    content = f.readline() 
+    # turn header into list to be able to index
+    header = content.split("|") 
+    return header
+
 def whereHelper(lt, rt, ieql):
     if(ieql == '='):
         return lt == rt
@@ -56,18 +70,8 @@ def rewriteFile(f, content):
     f.truncate()
     f.write(content)
 
-def parseAttrs(inputStr, start, end):
-    return (inputStr.casefold().split(start))[1].split(end)[0].split(", ")
-
-def parseTable(inputStr, end):
-    return inputStr[:-1].casefold().split(end)[1].split(" ")[0]
-
-def findColIndices(f, cols):
+def findColIndices(f, header, cols):
     colIndex = []
-    # get first line (header)
-    newContent = f.readline() 
-    # turn header into list to be able to index
-    header = newContent.split("|") 
     # get indices of selected cols
     for i in range(len(header)):
         for j in range(len(cols)):
@@ -75,12 +79,16 @@ def findColIndices(f, cols):
                 colIndex.append(i)
     return colIndex
 
+def appendSelectedCols(row, index, content):
+    content += row[index] + " "
+    return content
+
+
 
 # take user input until '.EXIT'
-while(userInput != ".EXIT"):
+while(userInput != ".EXIT".casefold()):
     try:
         userInput = input().strip()
-        userInput = userInput.casefold()
        # print(userInput)
 
         if(userInput == ""):
@@ -164,20 +172,62 @@ while(userInput != ".EXIT"):
         
         elif("SELECT".casefold() in userInput):
             try:
+                # empty strs
+                newContent = ""
+                newHeader = ""
+                
+                # get data from user input
                 start = 'SELECT '.casefold()
                 end = ' FROM '.casefold()
-                cols = parseAttrs(userInput, start, end)
-                print(cols)
-                tableName = parseTable(userInput, end)
+                cols = getSelectedCols(userInput, start, end)
+
+                delimiterStr = " FROM ".casefold()
+                tableName = getInputAfterStr(userInput, delimiterStr)
+                
+                if("WHERE".casefold() in userInput):
+                    delimiterStr = " WHERE ".casefold()
+                    whereCol = getInputAfterStr(userInput, delimiterStr)
+                    delimiterStr = whereCol + " "
+                    ineq = getInputAfterStr(userInput, delimiterStr)
+                    delimiterStr = ineq + " "
+                    whereVar = getInputAfterStr(userInput, delimiterStr)
 
                 with open(tableName, "r") as file: 
-                    if(cols == '*'):
-                        print("*")
+                    if("*" in cols):
+                        # print entire table
+                        print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
                     else:
-                        indices = findColIndices(file, cols)
+                        # print only selected cols
+                        header = getHeader(file)
+                        indices = findColIndices(file, header, cols)
+
+                        if("WHERE".casefold() in userInput):
+                            whereCol = whereCol.split() # convert str to list to be compatible with findColIndices
+                            whereIndex = findColIndices(file, header, whereCol)[0] # will only work for one "where" argument
+
+                        # only store header for selected cols
+                        for j in range(len(indices)):
+                            newHeader += header[indices[j]].strip() + "|" 
+                        # clean up
+                        newHeader = newHeader[:-1] + "\n"
+
+                        # read rest of file
+                        lines = file.readlines()
+                        for row in lines:
+                            # convert to list to use indices
+                            row = row.split("|") 
+                            for j in range(len(indices)):
+                                if(whereHelper(row[whereIndex], whereVar, ineq)):
+                                    newContent = appendSelectedCols(row, indices[j], newContent)
+                            # clean up
+                            newContent = newContent.strip().split(" ")
+                            newContent = "|".join(newContent) + "\n"
+                        
+                        print(bcolors.OKGREEN + newHeader + newContent + bcolors.ENDC)
+                            
             
 
-                    print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
+                    
             except FileNotFoundError:
                 print(bcolors.FAIL + "!Failed to query table " + tableName + " because it does not exist." + bcolors.ENDC)
 
@@ -197,7 +247,6 @@ while(userInput != ".EXIT"):
                 tableName = getInputVar(userInput, 2)
                 # after "VALUES", take all characters except ";", get rid of commas and extra spaces
                 colNames = userInput.split("values")[1][1:-2].replace(",", "|").replace("'", "").replace("\t", "").replace(" ", "")
-                print(colNames)
 
                 # get each individual attr
                 # for x in colNames:
@@ -223,7 +272,7 @@ while(userInput != ".EXIT"):
                 setCol = getInputVar(userInput, 3)
                 setVar = getInputVar(userInput, 5).replace("'", "")
                 whereCol = getInputVar(userInput, 7)
-                ineqlity = getInputVar(userInput, 8)
+                ineq = getInputVar(userInput, 8)
                 whereVar = getInputVar(userInput, 9).replace("'", "")
             
                 with open(tableName, 'r+') as file: # open for r+w
@@ -251,7 +300,7 @@ while(userInput != ".EXIT"):
                         # convert to list to use indices
                         row = row.split("|") 
                         # perform replacement
-                        if(whereHelper(row[whereIndex], whereVar, ineqlity)):
+                        if(whereHelper(row[whereIndex], whereVar, ineq)):
                             row[setIndex] = setVar 
                             recordCount += 1
                         # convert back to str
@@ -276,61 +325,66 @@ while(userInput != ".EXIT"):
 
 
         elif("DELETE FROM" in userInput.upper()):
-            # for success msg
-            recordCount = 0
+           # try:
+                # for success msg
+                recordCount = 0
 
-            # parse command
-            tableName = getInputVar(userInput, 2).capitalize()
-            whereCol = getInputVar(userInput, 4)
-            ineqlity = getInputVar(userInput, 5)
-            whereVar = getInputVar(userInput, 6).replace("'", "")
-            
+                # parse command
+                tableName = getInputVar(userInput, 2).capitalize()
+                whereCol = getInputVar(userInput, 4)
+                ineq = getInputVar(userInput, 5)
+                whereVar = getInputVar(userInput, 6).replace("'", "")
+                
 
-            with open(tableName, 'r+') as file: # open for r+w
-                # get first line (header)
-                newContent = file.readline() 
-                # turn header into list to be able to index
-                header = newContent.split("|") 
+                with open(tableName, 'r+') as file: # open for r+w
+                    # get first line (header)
+                    newContent = file.readline() 
+                    # turn header into list to be able to index
+                    header = newContent.split("|") 
 
-                # get indices of "where" col
-                currIndex = 0;
-                for attr in header:
-                    if attr.find(whereCol) != -1: # if is found
-                        whereIndex = currIndex
-                    currIndex += 1
+                    # get indices of "where" col
+                    currIndex = 0;
+                    for attr in header:
+                        if attr.find(whereCol) != -1: # if is found
+                            whereIndex = currIndex
+                        currIndex += 1
 
-                # read rest of file
-                lines = file.readlines()
-                # perform deletions
-                for row in lines:
-                    # ignore whitespace
-                    if(row == '\n'): 
-                        continue
-                    # convert to list to use indices
-                    row = row.split("|") 
-                    # determine if row to be deleted
-                    delete = (whereHelper(row[whereIndex], whereVar, ineqlity))
-                    # convert back to str
-                    row = "|".join(row) 
-                    # delete rows
-                    if(delete):
-                        row = ""
-                        recordCount += 1
-                    # clean up 
-                    if(not row.endswith('\n')):
-                        row = row + '\n'
-                    # update content to be written
-                    if(len(row) > 1):
-                        newContent = newContent + row
+                    # read rest of file
+                    lines = file.readlines()
+                    # perform deletions
+                    for row in lines:
+                        # ignore whitespace
+                        if(row == '\n'): 
+                            continue
+                        # convert to list to use indices
+                        row = row.split("|") 
+                        # determine if row to be deleted
+                        delete = (whereHelper(row[whereIndex], whereVar, ineq))
+                        # convert back to str
+                        row = "|".join(row) 
+                        # delete rows
+                        if(delete):
+                            row = ""
+                            recordCount += 1
+                        # clean up 
+                        if(not row.endswith('\n')):
+                            row = row + '\n'
+                        # update content to be written
+                        if(len(row) > 1):
+                            newContent = newContent + row
 
-                rewriteFile(file, newContent)
+                    rewriteFile(file, newContent)
 
-            # success msgs
-            if(recordCount == 1):
-                recsModified = "1 record"
-            else:
-                recsModified = str(recordCount) + " records"
-            print(bcolors.OKGREEN + recsModified + " deleted." + bcolors.ENDC)
+                # success msgs
+                if(recordCount == 1):
+                    recsModified = "1 record"
+                else:
+                    recsModified = str(recordCount) + " records"
+                print(bcolors.OKGREEN + recsModified + " deleted." + bcolors.ENDC)
+            # except Exception as e:
+            #     print("Error in delete: ")
+            #     print(e)
+
 
 else:
     print(bcolors.OKGREEN + "All done." + bcolors.ENDC)
