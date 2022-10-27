@@ -37,9 +37,11 @@ def getInputVar(str, index):
     inputVar = str[:-1].split()[index]
     return inputVar
 
-def getSelectedCols(inputStr, start, end):
+# gets list of vars given delimiting strings (start and end)
+def getVarBtwnStrs(inputStr, start, end):
     return (inputStr.casefold().split(start))[1].split(end)[0].split(", ")
 
+# gets var after some delimiting string (end)
 def getInputAfterStr(inputStr, end):
     return inputStr[:-1].split(end)[1].split(" ")[0]
 
@@ -50,6 +52,7 @@ def getHeader(f):
     header = content.split("|") 
     return header
 
+# performs inequalities for "where" statements
 def whereHelper(lt, rt, ieql):
     if(ieql == '='):
         return lt == rt
@@ -70,40 +73,42 @@ def rewriteFile(f, content):
     f.truncate()
     f.write(content)
 
+# gets the list of indices that contain some selected cols
 def findColIndices(f, header, cols):
     colIndex = []
-    # get indices of selected cols
     for i in range(len(header)):
         for j in range(len(cols)):
             if(header[i].find(cols[j]) != -1): # if is found
                 colIndex.append(i)
     return colIndex
 
+# for select
+# concatenates all selected cols 
 def appendSelectedCols(row, index, content):
     content += row[index] + " "
     return content
-
 
 
 # take user input until '.EXIT'
 while(userInput != ".EXIT".casefold()):
     try:
         userInput = input().strip()
-       # print(userInput)
 
-        if(userInput == ""):
+        if(userInput == ""): # ignore whitespace
             continue
-        if(userInput.startswith("--")):
+        if(userInput.startswith("--")): # ignore file comments
             continue
-        if(not userInput.endswith(";") and userInput != ".EXIT"):
+        if(not userInput.endswith(";") and userInput != ".EXIT"): # read until ";"
             raise NoSemicolonExcept
         elif(userInput.endswith(";")):
+            # concatenate all input since last ";" into single line
             tempInput = tempInput + " " + userInput
             userInput = tempInput
             tempInput = ""
             print("\n--" + userInput)
         
     except NoSemicolonExcept:
+        # read input until user enters ";"
         tempInput = tempInput + " " + userInput
         continue
         #print(bcolors.FAIL + "Command must end in semicolon." + bcolors.ENDC)
@@ -147,7 +152,8 @@ while(userInput != ".EXIT".casefold()):
 
         elif("CREATE TABLE" in userInput.upper()):
             try:
-                tableName = getInputVar(userInput, 2)
+                tableName = getVarBtwnStrs(userInput, "TABLE ".casefold(), "(")[0].capitalize().strip()
+                print(tableName.split())
                 if(os.path.exists(tableName)):
                     raise FileExistsError
 
@@ -179,7 +185,7 @@ while(userInput != ".EXIT".casefold()):
                 # get data from user input
                 start = 'SELECT '.casefold()
                 end = ' FROM '.casefold()
-                cols = getSelectedCols(userInput, start, end)
+                cols = getVarBtwnStrs(userInput, start, end)
 
                 delimiterStr = " FROM ".casefold()
                 tableName = getInputAfterStr(userInput, delimiterStr)
@@ -214,20 +220,15 @@ while(userInput != ".EXIT".casefold()):
                         # read rest of file
                         lines = file.readlines()
                         for row in lines:
-                            # convert to list to use indices
-                            row = row.split("|") 
+                            row = row.split("|") # convert to list to use indices
                             for j in range(len(indices)):
+                                # check each attr of each row meets "where" conds
                                 if(whereHelper(row[whereIndex], whereVar, ineq)):
                                     newContent = appendSelectedCols(row, indices[j], newContent)
                             # clean up
                             newContent = newContent.strip().split(" ")
-                            newContent = "|".join(newContent) + "\n"
-                        
+                            newContent = "|".join(newContent) + "\n" # convert back to string
                         print(bcolors.OKGREEN + newHeader + newContent + bcolors.ENDC)
-                            
-            
-
-                    
             except FileNotFoundError:
                 print(bcolors.FAIL + "!Failed to query table " + tableName + " because it does not exist." + bcolors.ENDC)
 
@@ -246,15 +247,10 @@ while(userInput != ".EXIT".casefold()):
             try:
                 tableName = getInputVar(userInput, 2)
                 # after "VALUES", take all characters except ";", get rid of commas and extra spaces
-                colNames = userInput.split("values")[1][1:-2].replace(",", "|").replace("'", "").replace("\t", "").replace(" ", "")
-
-                # get each individual attr
-                # for x in colNames:
-                #     x.strip()
-                #     print(x)
+                colNames = userInput.split("(")[1][1:-2].replace(",", "|").replace("'", "").replace("\t", "").replace(" ", "")
 
                 # append to table
-                with open(tableName, "a") as file: # append file
+                with open(tableName, "a") as file:
                     file.write("\n")
                     file.write(colNames)
                 print(bcolors.OKGREEN + "1 new record inserted." + bcolors.ENDC)
@@ -268,6 +264,7 @@ while(userInput != ".EXIT".casefold()):
                 recordCount = 0
 
                 # parse command
+                # only works for singular args right now
                 tableName = getInputVar(userInput, 1)
                 setCol = getInputVar(userInput, 3)
                 setVar = getInputVar(userInput, 5).replace("'", "")
@@ -323,9 +320,8 @@ while(userInput != ".EXIT".casefold()):
                 print("Error in update: ")
                 print(e)
 
-
         elif("DELETE FROM" in userInput.upper()):
-           # try:
+            try:
                 # for success msg
                 recordCount = 0
 
@@ -335,7 +331,6 @@ while(userInput != ".EXIT".casefold()):
                 ineq = getInputVar(userInput, 5)
                 whereVar = getInputVar(userInput, 6).replace("'", "")
                 
-
                 with open(tableName, 'r+') as file: # open for r+w
                     # get first line (header)
                     newContent = file.readline() 
@@ -381,10 +376,9 @@ while(userInput != ".EXIT".casefold()):
                 else:
                     recsModified = str(recordCount) + " records"
                 print(bcolors.OKGREEN + recsModified + " deleted." + bcolors.ENDC)
-            # except Exception as e:
-            #     print("Error in delete: ")
-            #     print(e)
-
+            except Exception as e:
+                print("Error in delete: ")
+                print(e)
 
 else:
     print(bcolors.OKGREEN + "All done." + bcolors.ENDC)

@@ -1,0 +1,4 @@
+name varchar(20) | country varchar(20)
+GizmoWorks|USA
+Canon|Japan
+Hitachi|Japan
