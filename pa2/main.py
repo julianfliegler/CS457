@@ -1,14 +1,10 @@
 # Julian Fliegler
-# CS 457, PA1
+# CS 457, PA2
 # Oct 2022
 
 import os
 import string
 import sys
-
-userInput = ""
-tempInput = ""
-mode = 0o777 # give file permissions for mkdir
 
 # custom exceptions
 class Error(Exception):
@@ -88,6 +84,9 @@ def appendSelectedCols(row, index, content):
     content += row[index] + " "
     return content
 
+mode = 0o777 # give file permissions for mkdir
+userInput = ""
+tempInput = ""
 
 # take user input until '.EXIT'
 while(userInput != ".EXIT".casefold()):
@@ -153,7 +152,6 @@ while(userInput != ".EXIT".casefold()):
         elif("CREATE TABLE" in userInput.upper()):
             try:
                 tableName = getVarBtwnStrs(userInput, "TABLE ".casefold(), "(")[0].capitalize().strip()
-                print(tableName.split())
                 if(os.path.exists(tableName)):
                     raise FileExistsError
 
@@ -247,12 +245,12 @@ while(userInput != ".EXIT".casefold()):
             try:
                 tableName = getInputVar(userInput, 2)
                 # after "VALUES", take all characters except ";", get rid of commas and extra spaces
-                colNames = userInput.split("(")[1][1:-2].replace(",", "|").replace("'", "").replace("\t", "").replace(" ", "")
+                colVals = userInput.split("(")[1][:-2].replace(",", "|").replace("'", "").replace("\t", "").replace(" ", "")
 
                 # append to table
                 with open(tableName, "a") as file:
                     file.write("\n")
-                    file.write(colNames)
+                    file.write(colVals)
                 print(bcolors.OKGREEN + "1 new record inserted." + bcolors.ENDC)
             except Exception as e:
                 print("Error in insertion: ")
