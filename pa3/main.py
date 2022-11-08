@@ -33,9 +33,13 @@ def getInputVar(str, index):
     inputVar = str[:-1].split()[index]
     return inputVar
 
-# gets list of vars given delimiting strings (start and end)
-def getVarBtwnStrs(inputStr, start, end):
-    return (inputStr.split(start))[1].split(end)[0].split(", ")
+# # gets list of vars given delimiting strings (start and end)
+# def getVarBtwnStrs(inputStr, start, end):
+#     return (inputStr.split(start))[1].split(end)[0].split(", ")
+
+# gets list of vars given delimiting string and lets you choose string to split on
+def getVarBtwnStrs(inputStr, start, end, splitOn):
+    return (inputStr.split(start))[1].split(end)[0].split(splitOn)
 
 # gets var after some delimiting string (end)
 def getInputAfterStr(inputStr, end):
@@ -124,13 +128,13 @@ def match(tables, attrs):
     return retTables, retAttrs
 
 def join(tables, indices, ineq):
-    joinedTables = ""
+    joinedRows = ""
+    header = ""
 
     with open(tables[0], 'r') as tableA:
         with open(tables[1], 'r') as tableB:
-            # get rid of headers
-            tableA.readline() 
-            tableB.readline()
+            # get headers
+            header = (tableA.readline().strip() + " | " + tableB.readline().strip())
 
             rowsTableA = tableA.readlines()
             rowsTableB = tableB.readlines()
@@ -138,9 +142,10 @@ def join(tables, indices, ineq):
             for rowA in rowsTableA:
                 for rowB in rowsTableB:
                     if(whereHelper(rowA[indices[0]], rowB[indices[1]], ineq)):
-                        joinedTables += (rowA.strip() + "|" + rowB.strip()) + '\n'
-                        
-    return joinedTables
+                        joinedRows += (rowA.strip() + "|" + rowB.strip()) + '\n'
+
+    newContent = (header + '\n' + joinedRows)
+    return newContent
 
 mode = 0o777 # give file permissions for mkdir
 userInput = ""
@@ -209,7 +214,7 @@ while(userInput != ".EXIT".casefold()):
 
         elif("CREATE TABLE" in userInput.upper()):
             try:
-                tableName = getVarBtwnStrs(userInput, "TABLE ".casefold(), "(")[0].capitalize().strip()
+                tableName = getVarBtwnStrs(userInput, "TABLE ".casefold(), "(", ", ")[0].capitalize().strip()
                 if(os.path.exists(tableName)):
                     raise FileExistsError
 
@@ -239,9 +244,14 @@ while(userInput != ".EXIT".casefold()):
                 newHeader = ""
                 
                 # get data from user input
-                cols = getVarBtwnStrs(userInput, 'SELECT '.casefold(), ' FROM '.casefold())
-                tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold())
-                
+                cols = getVarBtwnStrs(userInput, 'SELECT '.casefold(), ' FROM '.casefold(), ", ")
+                if("inner join".casefold() in userInput):
+                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold(), " inner join ".casefold())
+                elif("outer join".casefold() in userInput):
+                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold(), " outer join ".casefold())
+                else:
+                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold(), ", ")
+
                 if("WHERE".casefold() in userInput):
                     whereLeft = getInputAfterStr(userInput, " WHERE ".casefold())
                     whereIneq = getInputAfterStr(userInput, whereLeft + " ")
