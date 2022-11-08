@@ -163,7 +163,6 @@ def outerJoin(tables, indices, ineq):
                 for rowB in rowsTableB:
                     if(whereHelper(rowA[indices[0]], rowB[indices[1]], ineq)):
                         joinedRows += (rowA.strip() + "|" + rowB.strip()) + '\n'
-                print(rowA)
 
     newContent = (header + '\n' + joinedRows)
     print(newContent)
