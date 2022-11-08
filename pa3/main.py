@@ -124,19 +124,23 @@ def match(tables, attrs):
     return retTables, retAttrs
 
 def join(tables, indices, ineq):
-    with open(tables[0], 'r') as table1:
-        header = file.readline()
-        with open(tables[1], 'r') as table2:
-            print(table1, table2)
-    # print(tables)
-    # for row0 in tables:
-    #     print(row0)
-    #     for row1 in tables[1]:
-    #         if(whereHelper(row0[indices[0]], row1[indices[1]], ineq)):
-    #             performJoin(row0, row1)
+    joinedTables = ""
 
-def performJoin(row0, row1):
-    print(row0, row1)
+    with open(tables[0], 'r') as tableA:
+        with open(tables[1], 'r') as tableB:
+            # get rid of headers
+            tableA.readline() 
+            tableB.readline()
+
+            rowsTableA = tableA.readlines()
+            rowsTableB = tableB.readlines()
+
+            for rowA in rowsTableA:
+                for rowB in rowsTableB:
+                    if(whereHelper(rowA[indices[0]], rowB[indices[1]], ineq)):
+                        joinedTables += (rowA.strip() + "|" + rowB.strip()) + '\n'
+                        
+    return joinedTables
 
 mode = 0o777 # give file permissions for mkdir
 userInput = ""
@@ -263,7 +267,8 @@ while(userInput != ".EXIT".casefold()):
                             for i in range(len(tables)):
                                 indices.append(getColIndex(tables[i], attrs[i]))
                             
-                            join(tables, indices, whereIneq)
+                            joinedTables = join(tables, indices, whereIneq)
+                            print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
                     else:
                         # print only selected cols
                         header = getHeader(file)
