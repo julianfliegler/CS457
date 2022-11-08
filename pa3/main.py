@@ -69,7 +69,15 @@ def rewriteFile(f, content):
     f.truncate()
     f.write(content)
 
-def getColIndex(tables[i], attrs[i])
+def getColIndex(table, attr):
+    # get header
+    with open(table, 'r') as file:
+        header = file.readline().strip().split(" | ")
+    
+    # get index of attr 
+    fullStr = [i for i in header if attr in i] # get full str ("id int") containing the attr ("id")
+    index = header.index(fullStr[0]) # then find index of that str in header
+    return index
 
 # gets the list of indices that contain some selected cols
 def findColIndices(f, header, cols):
@@ -114,6 +122,21 @@ def match(tables, attrs):
 
     # return tables and their associated attrs
     return retTables, retAttrs
+
+def join(tables, indices, ineq):
+    with open(tables[0], 'r') as table1:
+        header = file.readline()
+        with open(tables[1], 'r') as table2:
+            print(table1, table2)
+    # print(tables)
+    # for row0 in tables:
+    #     print(row0)
+    #     for row1 in tables[1]:
+    #         if(whereHelper(row0[indices[0]], row1[indices[1]], ineq)):
+    #             performJoin(row0, row1)
+
+def performJoin(row0, row1):
+    print(row0, row1)
 
 mode = 0o777 # give file permissions for mkdir
 userInput = ""
@@ -231,14 +254,16 @@ while(userInput != ".EXIT".casefold()):
                             # print entire table
                             print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
                         else:
-                            # join
-                            print("join")
+                            # match table names to attrs
                             tables = match(tableNames, whereList)[0]
                             attrs = match(tableNames, whereList)[1]
-                            for i in range(len(tables):
-                                getColIndex(tables[i], attrs[i])
-                            #getIndex()
-                            #join()
+
+                            # get indices of each attr in each table
+                            indices = []
+                            for i in range(len(tables)):
+                                indices.append(getColIndex(tables[i], attrs[i]))
+                            
+                            join(tables, indices, whereIneq)
                     else:
                         # print only selected cols
                         header = getHeader(file)
