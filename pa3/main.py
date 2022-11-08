@@ -127,7 +127,7 @@ def match(tables, attrs):
     # return tables and their associated attrs
     return retTables, retAttrs
 
-def join(tables, indices, ineq):
+def innerJoin(tables, indices, ineq):
     joinedRows = ""
     header = ""
 
@@ -145,6 +145,28 @@ def join(tables, indices, ineq):
                         joinedRows += (rowA.strip() + "|" + rowB.strip()) + '\n'
 
     newContent = (header + '\n' + joinedRows)
+    return newContent
+
+def outerJoin(tables, indices, ineq):
+    joinedRows = ""
+    header = ""
+
+    with open(tables[0], 'r') as tableA:
+        with open(tables[1], 'r') as tableB:
+            # get headers
+            header = (tableA.readline().strip() + " | " + tableB.readline().strip())
+
+            rowsTableA = tableA.readlines()
+            rowsTableB = tableB.readlines()
+            
+            for rowA in rowsTableA:
+                for rowB in rowsTableB:
+                    if(whereHelper(rowA[indices[0]], rowB[indices[1]], ineq)):
+                        joinedRows += (rowA.strip() + "|" + rowB.strip()) + '\n'
+                print(rowA)
+
+    newContent = (header + '\n' + joinedRows)
+    print(newContent)
     return newContent
 
 mode = 0o777 # give file permissions for mkdir
@@ -242,21 +264,42 @@ while(userInput != ".EXIT".casefold()):
                 # empty strs
                 newContent = ""
                 newHeader = ""
+
+                # vars to check which type of join
+                inner = False
+                outer = False
+                where = False
+                on = False
                 
                 # get data from user input
-                cols = getVarBtwnStrs(userInput, 'SELECT '.casefold(), ' FROM '.casefold(), ", ")
-                if("inner join".casefold() in userInput):
-                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold(), " inner join ".casefold())
-                elif("outer join".casefold() in userInput):
-                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold(), " outer join ".casefold())
-                else:
-                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold(), ", ")
-
                 if("WHERE".casefold() in userInput):
+                    where = True
+                    delimStr = " where ".casefold()
                     whereLeft = getInputAfterStr(userInput, " WHERE ".casefold())
                     whereIneq = getInputAfterStr(userInput, whereLeft + " ")
                     whereRight = getInputAfterStr(userInput, whereIneq + " ")
                     whereList = [whereLeft, whereRight, whereIneq]
+
+                elif("on".casefold() in userInput):
+                    on = True
+                    delimStr = " on ".casefold()
+                    onLeft = getInputAfterStr(userInput, " on ".casefold())
+                    onIneq = getInputAfterStr(userInput, onLeft + " ")
+                    onRight = getInputAfterStr(userInput, onIneq + " ")
+                    onList = [onLeft, onRight, onIneq]
+
+                cols = getVarBtwnStrs(userInput, 'SELECT '.casefold(), ' FROM '.casefold(), ", ")
+                if("inner join".casefold() in userInput):
+                    inner = True
+                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, " inner join ".casefold())
+                elif("outer join".casefold() in userInput):
+                    outer = True
+                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, " left outer join ".casefold())
+                else:
+                    inner = True
+                    tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, ", ")
+
+                
 
                 with open(tableName, "r") as file: 
                     # top level conditions: check select statement
@@ -268,17 +311,47 @@ while(userInput != ".EXIT".casefold()):
                             # print entire table
                             print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
                         else:
-                            # match table names to attrs
-                            tables = match(tableNames, whereList)[0]
-                            attrs = match(tableNames, whereList)[1]
+                            if(inner and where):
+                                # match table names to attrs
+                                tables = match(tableNames, whereList)[0]
+                                attrs = match(tableNames, whereList)[1]
 
-                            # get indices of each attr in each table
-                            indices = []
-                            for i in range(len(tables)):
-                                indices.append(getColIndex(tables[i], attrs[i]))
+                                # get indices of each attr in each table
+                                indices = []
+                                for i in range(len(tables)):
+                                    indices.append(getColIndex(tables[i], attrs[i]))
+                                
+                                joinedTables = innerJoin(tables, indices, whereIneq)
+                                print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
+
+                            elif(inner and on):
+                                # match table names to attrs
+                                tables = match(tableNames, onList)[0]
+                                attrs = match(tableNames, onList)[1]
+
+                                # get indices of each attr in each table
+                                indices = []
+                                for i in range(len(tables)):
+                                    indices.append(getColIndex(tables[i], attrs[i]))
+                                
+                                joinedTables = innerJoin(tables, indices, onIneq)
+                                print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
+
+                            elif(outer and on):
+                                # match table names to attrs
+                                tables = match(tableNames, onList)[0]
+                                attrs = match(tableNames, onList)[1]
+
+                                # get indices of each attr in each table
+                                indices = []
+                                for i in range(len(tables)):
+                                    indices.append(getColIndex(tables[i], attrs[i]))
+
+                                # joinedTables = 
+                                outerJoin(tables, indices, onIneq)
+                                # print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
+                           
                             
-                            joinedTables = join(tables, indices, whereIneq)
-                            print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
                     else:
                         # print only selected cols
                         header = getHeader(file)
