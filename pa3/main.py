@@ -69,6 +69,8 @@ def rewriteFile(f, content):
     f.truncate()
     f.write(content)
 
+def getColIndex(tables[i], attrs[i])
+
 # gets the list of indices that contain some selected cols
 def findColIndices(f, header, cols):
     colIndex = []
@@ -83,6 +85,35 @@ def findColIndices(f, header, cols):
 def appendSelectedCols(row, index, content):
     content += row[index] + " "
     return content
+
+def match(tables, attrs):
+    # parse attr list
+    alias1 = attrs[0].split(".")[0]
+    alias2 = attrs[1].split(".")[0]
+    attr1 = attrs[0].split(".")[1]
+    attr2 = attrs[1].split(".")[1]
+    aliases = [alias1, alias2] 
+    
+    # create dictionary matching alias to attr
+    dictAliasAttr = {alias1: attr1, alias2: attr2}
+
+    # create dictionary matching alias to table name
+    tables = " ".join(tables).split(" ") # reformat tables list
+    dictAliasTable = {} # empty dict
+    for a in aliases:
+        if(a in tables):
+            index = tables.index(a) - 1
+            dictAliasTable[a] = tables[index]
+
+    # perform match
+    retTables = []
+    retAttrs = []
+    for i in range(len(dictAliasAttr)):
+        retTables.append(dictAliasTable[aliases[i]])
+        retAttrs.append(dictAliasAttr[aliases[i]])
+
+    # return tables and their associated attrs
+    return retTables, retAttrs
 
 mode = 0o777 # give file permissions for mkdir
 userInput = ""
@@ -185,9 +216,10 @@ while(userInput != ".EXIT".casefold()):
                 tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold())
                 
                 if("WHERE".casefold() in userInput):
-                    whereCol = getInputAfterStr(userInput, " WHERE ".casefold())
-                    ineq = getInputAfterStr(userInput, whereCol + " ")
-                    whereVar = getInputAfterStr(userInput, ineq + " ")
+                    whereLeft = getInputAfterStr(userInput, " WHERE ".casefold())
+                    whereIneq = getInputAfterStr(userInput, whereLeft + " ")
+                    whereRight = getInputAfterStr(userInput, whereIneq + " ")
+                    whereList = [whereLeft, whereRight, whereIneq]
 
                 with open(tableName, "r") as file: 
                     # top level conditions: check select statement
@@ -201,14 +233,20 @@ while(userInput != ".EXIT".casefold()):
                         else:
                             # join
                             print("join")
+                            tables = match(tableNames, whereList)[0]
+                            attrs = match(tableNames, whereList)[1]
+                            for i in range(len(tables):
+                                getColIndex(tables[i], attrs[i])
+                            #getIndex()
+                            #join()
                     else:
                         # print only selected cols
                         header = getHeader(file)
                         indices = findColIndices(file, header, cols)
 
                         if("WHERE".casefold() in userInput):
-                            whereCol = whereCol.split() # convert str to list to be compatible with findColIndices
-                            whereIndex = findColIndices(file, header, whereCol)[0] # will only work for one "where" argument
+                            whereLeft = whereLeft.split() # convert str to list to be compatible with findColIndices
+                            whereIndex = findColIndices(file, header, whereLeft)[0] # will only work for one "where" argument
 
                         # only store header for selected cols
                         for j in range(len(indices)):
@@ -222,7 +260,7 @@ while(userInput != ".EXIT".casefold()):
                             row = row.split("|") # convert to list to use indices
                             for j in range(len(indices)):
                                 # check each attr of each row meets "where" conds
-                                if(whereHelper(row[whereIndex], whereVar, ineq)):
+                                if(whereHelper(row[whereIndex], whereRight, whereIneq)):
                                     newContent = appendSelectedCols(row, indices[j], newContent)
                             # clean up
                             newContent = newContent.strip().split(" ")
@@ -267,9 +305,9 @@ while(userInput != ".EXIT".casefold()):
                 tableName = getInputVar(userInput, 1)
                 setCol = getInputVar(userInput, 3)
                 setVar = getInputVar(userInput, 5).replace("'", "")
-                whereCol = getInputVar(userInput, 7)
-                ineq = getInputVar(userInput, 8)
-                whereVar = getInputVar(userInput, 9).replace("'", "")
+                whereLeft = getInputVar(userInput, 7)
+                whereIneq = getInputVar(userInput, 8)
+                whereRight = getInputVar(userInput, 9).replace("'", "")
             
                 with open(tableName, 'r+') as file: # open for r+w
                     # get first line (header)
@@ -280,7 +318,7 @@ while(userInput != ".EXIT".casefold()):
                     # get indices of "where" and "set" cols
                     currIndex = 0;
                     for attr in header:
-                        if attr.find(whereCol) != -1: # if is found
+                        if attr.find(whereLeft) != -1: # if is found
                             whereIndex = currIndex
                         if attr.find(setCol) != -1:
                             setIndex = currIndex
@@ -296,7 +334,7 @@ while(userInput != ".EXIT".casefold()):
                         # convert to list to use indices
                         row = row.split("|") 
                         # perform replacement
-                        if(whereHelper(row[whereIndex], whereVar, ineq)):
+                        if(whereHelper(row[whereIndex], whereRight, whereIneq)):
                             row[setIndex] = setVar 
                             recordCount += 1
                         # convert back to str
@@ -326,9 +364,9 @@ while(userInput != ".EXIT".casefold()):
 
                 # parse command
                 tableName = getInputVar(userInput, 2).capitalize()
-                whereCol = getInputVar(userInput, 4)
-                ineq = getInputVar(userInput, 5)
-                whereVar = getInputVar(userInput, 6).replace("'", "")
+                whereLeft = getInputVar(userInput, 4)
+                whereIneq = getInputVar(userInput, 5)
+                whereRight = getInputVar(userInput, 6).replace("'", "")
                 
                 with open(tableName, 'r+') as file: # open for r+w
                     # get first line (header)
@@ -339,7 +377,7 @@ while(userInput != ".EXIT".casefold()):
                     # get indices of "where" col
                     currIndex = 0;
                     for attr in header:
-                        if attr.find(whereCol) != -1: # if is found
+                        if attr.find(whereLeft) != -1: # if is found
                             whereIndex = currIndex
                         currIndex += 1
 
@@ -353,7 +391,7 @@ while(userInput != ".EXIT".casefold()):
                         # convert to list to use indices
                         row = row.split("|") 
                         # determine if row to be deleted
-                        delete = (whereHelper(row[whereIndex], whereVar, ineq))
+                        delete = (whereHelper(row[whereIndex], whereRight, whereIneq))
                         # convert back to str
                         row = "|".join(row) 
                         # delete rows
