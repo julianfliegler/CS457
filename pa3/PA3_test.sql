@@ -1,8 +1,10 @@
 --CS457 PA3
 
 --Construct the database and table (0 points; expected to work from PA1)
-CREATE DATABASE CS457_PA3;
+-- CREATE DATABASE CS457_PA3;
 USE CS457_PA3;
+drop table Employee;
+drop table Sales;
 create table Employee(id int, name varchar(10));
 create table Sales(employeeID int, productID int);
 
@@ -19,15 +21,15 @@ select *
 from Employee E, Sales S 
 where E.id = S.employeeID;
 
--- This is the same as above but with a different syntax (3 points)
-select * 
-from Employee E inner join Sales S 
-on E.id = S.employeeID;
+-- -- This is the same as above but with a different syntax (3 points)
+-- select * 
+-- from Employee E inner join Sales S 
+-- on E.id = S.employeeID;
 
--- The following will include Gill (5 points)
-select * 
-from Employee E left outer join Sales S 
-on E.id = S.employeeID;
+-- -- The following will include Gill (5 points)
+-- select * 
+-- from Employee E left outer join Sales S 
+-- on E.id = S.employeeID;
 
 .exit
 

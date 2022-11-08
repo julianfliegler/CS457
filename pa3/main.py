@@ -35,7 +35,7 @@ def getInputVar(str, index):
 
 # gets list of vars given delimiting strings (start and end)
 def getVarBtwnStrs(inputStr, start, end):
-    return (inputStr.casefold().split(start))[1].split(end)[0].split(", ")
+    return (inputStr.split(start))[1].split(end)[0].split(", ")
 
 # gets var after some delimiting string (end)
 def getInputAfterStr(inputStr, end):
@@ -158,8 +158,8 @@ while(userInput != ".EXIT".casefold()):
                 # split string after table name
                 # remove first, last parantheses and ";"
                 # then replace all commas with "|"
-                tableContent = userInput.split(tableName)[1][2:-2].replace(",", " |")
-               
+                tableContent = userInput.split(tableName)[1][1:-2].replace(",", " |")
+                
                 with open(tableName, "w") as f: # "with" automatically closes file
                     f.write(tableContent)
                 print(bcolors.OKGREEN + "Table " + tableName + " created." + bcolors.ENDC)
@@ -181,25 +181,26 @@ while(userInput != ".EXIT".casefold()):
                 newHeader = ""
                 
                 # get data from user input
-                start = 'SELECT '.casefold()
-                end = ' FROM '.casefold()
-                cols = getVarBtwnStrs(userInput, start, end)
-
-                delimiterStr = " FROM ".casefold()
-                tableName = getInputAfterStr(userInput, delimiterStr)
+                cols = getVarBtwnStrs(userInput, 'SELECT '.casefold(), ' FROM '.casefold())
+                tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), " WHERE ".casefold())
                 
                 if("WHERE".casefold() in userInput):
-                    delimiterStr = " WHERE ".casefold()
-                    whereCol = getInputAfterStr(userInput, delimiterStr)
-                    delimiterStr = whereCol + " "
-                    ineq = getInputAfterStr(userInput, delimiterStr)
-                    delimiterStr = ineq + " "
-                    whereVar = getInputAfterStr(userInput, delimiterStr)
+                    whereCol = getInputAfterStr(userInput, " WHERE ".casefold())
+                    ineq = getInputAfterStr(userInput, whereCol + " ")
+                    whereVar = getInputAfterStr(userInput, ineq + " ")
 
                 with open(tableName, "r") as file: 
+                    # top level conditions: check select statement
                     if("*" in cols):
-                        # print entire table
-                        print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
+                        # secondary level: check from statement
+                        if(len(tableNames) < 0):
+                            raise Exception("Cannot find table(s): " + tableNames) 
+                        elif(len(tableNames) == 1):
+                            # print entire table
+                            print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
+                        else:
+                            # join
+                            print("join")
                     else:
                         # print only selected cols
                         header = getHeader(file)
