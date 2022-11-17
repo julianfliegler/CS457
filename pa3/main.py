@@ -159,13 +159,18 @@ def outerJoin(tables, indices, ineq):
             rowsTableA = tableA.readlines()
             rowsTableB = tableB.readlines()
             
+            # if match found, add to joined table and incr matchCount
+            # if rowA has no match in tableB, add rowA to joined table
             for rowA in rowsTableA:
+                matchCount = 0
                 for rowB in rowsTableB:
                     if(whereHelper(rowA[indices[0]], rowB[indices[1]], ineq)):
                         joinedRows += (rowA.strip() + "|" + rowB.strip()) + '\n'
+                        matchCount += 1
+                if(matchCount == 0):
+                    joinedRows += (rowA.strip() + "||") + '\n'
 
     newContent = (header + '\n' + joinedRows)
-    print(newContent)
     return newContent
 
 mode = 0o777 # give file permissions for mkdir
@@ -346,9 +351,8 @@ while(userInput != ".EXIT".casefold()):
                                 for i in range(len(tables)):
                                     indices.append(getColIndex(tables[i], attrs[i]))
 
-                                # joinedTables = 
-                                outerJoin(tables, indices, onIneq)
-                                # print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
+                                joinedTables = outerJoin(tables, indices, onIneq)
+                                print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
                            
                             
                     else:
