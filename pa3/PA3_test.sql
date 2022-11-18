@@ -1,10 +1,8 @@
 --CS457 PA3
 
 --Construct the database and table (0 points; expected to work from PA1)
--- CREATE DATABASE CS457_PA3;
+CREATE DATABASE CS457_PA3;
 USE CS457_PA3;
-drop table Employee;
-drop table Sales;
 create table Employee(id int, name varchar(10));
 create table Sales(employeeID int, productID int);
 
