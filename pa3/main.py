@@ -98,6 +98,7 @@ def appendSelectedCols(row, index, content):
     content += row[index] + " "
     return content
 
+# matches a table name (Employee E) to desired attributes (E.id)
 def match(tables, attrs):
     # parse attr list
     alias1 = attrs[0].split(".")[0]
@@ -127,7 +128,9 @@ def match(tables, attrs):
     # return tables and their associated attrs
     return retTables, retAttrs
 
+# performs inner join
 def innerJoin(tables, indices, ineq):
+    # reset vars
     joinedRows = ""
     header = ""
 
@@ -136,18 +139,22 @@ def innerJoin(tables, indices, ineq):
             # get headers
             header = (tableA.readline().strip() + " | " + tableB.readline().strip())
 
+            # get rest of tables to read
             rowsTableA = tableA.readlines()
             rowsTableB = tableB.readlines()
 
             for rowA in rowsTableA:
                 for rowB in rowsTableB:
+                    # if match
                     if(whereHelper(rowA[indices[0]], rowB[indices[1]], ineq)):
                         joinedRows += (rowA.strip() + "|" + rowB.strip()) + '\n'
 
     newContent = (header + '\n' + joinedRows)
     return newContent
 
+# performs LEFT outer join
 def outerJoin(tables, indices, ineq):
+    # reset vars
     joinedRows = ""
     header = ""
 
@@ -156,11 +163,12 @@ def outerJoin(tables, indices, ineq):
             # get headers
             header = (tableA.readline().strip() + " | " + tableB.readline().strip())
 
+            # get rest of tables to read
             rowsTableA = tableA.readlines()
             rowsTableB = tableB.readlines()
             
-            # if match found, add to joined table and incr matchCount
-            # if rowA has no match in tableB, add rowA to joined table
+            # if rowA match rowB, add row to joined table, matchCount++
+            # if rowA doesn't match any rowB, add rowA to joined table
             for rowA in rowsTableA:
                 matchCount = 0
                 for rowB in rowsTableB:
@@ -293,6 +301,9 @@ while(userInput != ".EXIT".casefold()):
                     onList = [onLeft, onRight, onIneq]
 
                 cols = getVarBtwnStrs(userInput, 'SELECT '.casefold(), ' FROM '.casefold(), ", ")
+
+                # get table names
+                # parse will be diff based on join type
                 if("inner join".casefold() in userInput):
                     inner = True
                     tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, " inner join ".casefold())
@@ -303,19 +314,22 @@ while(userInput != ".EXIT".casefold()):
                     inner = True
                     tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, ", ")
 
-                
-
                 with open(tableName, "r") as file: 
-                    # top level conditions: check select statement
-                    if("*" in cols):
-                        # secondary level: check from statement
+                    # top level conditions: check SELECT statement
+                    # select all 
+                    if("*" in cols): 
+                        # secondary level: check FROM statement
+                        
                         if(len(tableNames) < 0):
                             raise Exception("Cannot find table(s): " + tableNames) 
-                        elif(len(tableNames) == 1):
+
+                        elif(len(tableNames) == 1): # select all from single table
                             # print entire table
                             print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
-                        else:
-                            if(inner and where):
+
+                        else: # multiple tables given
+
+                            if(inner and where): # inner join with WHERE clause
                                 # match table names to attrs
                                 tables = match(tableNames, whereList)[0]
                                 attrs = match(tableNames, whereList)[1]
@@ -325,10 +339,11 @@ while(userInput != ".EXIT".casefold()):
                                 for i in range(len(tables)):
                                     indices.append(getColIndex(tables[i], attrs[i]))
                                 
+                                # perform inner join
                                 joinedTables = innerJoin(tables, indices, whereIneq)
                                 print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
 
-                            elif(inner and on):
+                            elif(inner and on): # inner join with ON clause
                                 # match table names to attrs
                                 tables = match(tableNames, onList)[0]
                                 attrs = match(tableNames, onList)[1]
@@ -338,10 +353,11 @@ while(userInput != ".EXIT".casefold()):
                                 for i in range(len(tables)):
                                     indices.append(getColIndex(tables[i], attrs[i]))
                                 
+                                # perform inner join
                                 joinedTables = innerJoin(tables, indices, onIneq)
                                 print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
 
-                            elif(outer and on):
+                            elif(outer and on): # outer join and ON clause
                                 # match table names to attrs
                                 tables = match(tableNames, onList)[0]
                                 attrs = match(tableNames, onList)[1]
@@ -351,10 +367,11 @@ while(userInput != ".EXIT".casefold()):
                                 for i in range(len(tables)):
                                     indices.append(getColIndex(tables[i], attrs[i]))
 
+                                # perform outer join
                                 joinedTables = outerJoin(tables, indices, onIneq)
                                 print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
-                           
-                            
+
+                    # select specific cols
                     else:
                         # print only selected cols
                         header = getHeader(file)
@@ -382,6 +399,7 @@ while(userInput != ".EXIT".casefold()):
                             newContent = newContent.strip().split(" ")
                             newContent = "|".join(newContent) + "\n" # convert back to string
                         print(bcolors.OKGREEN + newHeader + newContent + bcolors.ENDC)
+                        
             except FileNotFoundError:
                 print(bcolors.FAIL + "!Failed to query table " + tableName + " because it does not exist." + bcolors.ENDC)
 
