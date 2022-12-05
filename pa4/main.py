@@ -1,6 +1,6 @@
 # Julian Fliegler
 # CS 457, PA2
-# Oct 2022
+# Dec 2022
 
 import os
 import string
@@ -12,6 +12,9 @@ class Error(Exception):
     pass
 class NoSemicolonExcept(Error):
     # if user input doesn't end in semicolon
+    pass
+class AbortExcept(Error):
+    # if try to commit when don't have lock
     pass
 
 # python class to print colored output
@@ -181,6 +184,44 @@ def outerJoin(tables, indices, ineq):
     newContent = (header + '\n' + joinedRows)
     return newContent
 
+def performUpdate(file, recordCount):
+    # get first line (header)
+    newContent = file.readline()
+    # turn header into list to be able to index
+    header = newContent.split("|") 
+    
+    # get indices of "where" and "set" cols
+    currIndex = 0;
+    for attr in header:
+        if attr.find(whereLeft) != -1: # if is found
+            whereIndex = currIndex
+        if attr.find(setCol) != -1:
+            setIndex = currIndex
+        currIndex += 1
+
+    # read rest of file
+    lines = file.readlines()
+    # perform replacements ("set")
+    for row in lines:
+        # ignore whitespace
+        if(row == '\n'): 
+            continue
+        # convert to list to use indices
+        row = row.split("|") 
+        # perform replacement
+        if(whereHelper(row[whereIndex], whereRight, whereIneq)):
+            row[setIndex] = setVar 
+            recordCount += 1
+        # convert back to str
+        row = "|".join(row) 
+        # clean up 
+        if(not row.endswith('\n')):
+            row = row + '\n'
+        # update content to be written
+        newContent = newContent + row
+    return newContent, recordCount
+
+
 mode = 0o777 # give file permissions for mkdir
 userInput = ""
 tempInput = ""
@@ -255,8 +296,10 @@ while(userInput != ".EXIT".casefold()):
                 # split string after table name
                 # remove first, last parantheses and ";"
                 # then replace all commas with "|"
-                tableContent = userInput.split(tableName)[1][1:-2].replace(",", " |")
-                
+                tableContent = userInput.split(tableName)[1] # content after table name
+                tableContent = getVarBtwnStrs(tableContent, "(", ")", ", ") # content in between parantheses; str -> list
+                tableContent = "|".join(tableContent) # list -> string, joined by "|"
+
                 with open(tableName, "w") as f: # "with" automatically closes file
                     f.write(tableContent)
                 print(bcolors.OKGREEN + "Table " + tableName + " created." + bcolors.ENDC)
@@ -310,17 +353,21 @@ while(userInput != ".EXIT".casefold()):
                 elif("outer join".casefold() in userInput):
                     outer = True
                     tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, " left outer join ".casefold())
-                else:
+                elif("where".casefold() in userInput or "on".casefold() in userInput):
                     inner = True
                     tableNames = getVarBtwnStrs(userInput, " FROM ".casefold(), delimStr, ", ")
+                else: # not a join statement, only one table
+                    tableName = getInputAfterStr(userInput, " FROM ".casefold())
 
                 with open(tableName, "r") as file: 
                     # top level conditions: check SELECT statement
                     # select all 
                     if("*" in cols): 
                         # secondary level: check FROM statement
-                        
-                        if(len(tableNames) < 0):
+                        if(not inner and not outer): # select * and not a join
+                            # just print table contents 
+                            print(bcolors.OKGREEN + file.read() + bcolors.ENDC)
+                        elif(len(tableNames) < 0):
                             raise Exception("Cannot find table(s): " + tableNames) 
 
                         elif(len(tableNames) == 1): # select all from single table
@@ -370,7 +417,6 @@ while(userInput != ".EXIT".casefold()):
                                 # perform outer join
                                 joinedTables = outerJoin(tables, indices, onIneq)
                                 print(bcolors.OKGREEN + joinedTables + bcolors.ENDC)
-
                     # select specific cols
                     else:
                         # print only selected cols
@@ -433,7 +479,7 @@ while(userInput != ".EXIT".casefold()):
             try:
                 # for success msg
                 recordCount = 0
-
+                
                 # parse command
                 # only works for singular args right now
                 tableName = getInputVar(userInput, 1)
@@ -444,42 +490,31 @@ while(userInput != ".EXIT".casefold()):
                 whereRight = getInputVar(userInput, 9).replace("'", "")
             
                 with open(tableName, 'r+') as file: # open for r+w
-                    # get first line (header)
-                    newContent = file.readline() 
-                    # turn header into list to be able to index
-                    header = newContent.split("|") 
-                    
-                    # get indices of "where" and "set" cols
-                    currIndex = 0;
-                    for attr in header:
-                        if attr.find(whereLeft) != -1: # if is found
-                            whereIndex = currIndex
-                        if attr.find(setCol) != -1:
-                            setIndex = currIndex
-                        currIndex += 1
-
-                    # read rest of file
-                    lines = file.readlines()
-                    # perform replacements ("set")
-                    for row in lines:
-                        # ignore whitespace
-                        if(row == '\n'): 
-                            continue
-                        # convert to list to use indices
-                        row = row.split("|") 
-                        # perform replacement
-                        if(whereHelper(row[whereIndex], whereRight, whereIneq)):
-                            row[setIndex] = setVar 
-                            recordCount += 1
-                        # convert back to str
-                        row = "|".join(row) 
-                        # clean up 
-                        if(not row.endswith('\n')):
-                            row = row + '\n'
-                        # update content to be written
-                        newContent = newContent + row
-
-                    rewriteFile(file, newContent)
+                    # check if transaction in progress
+                    currDir = os.path.split(os.getcwd())[1] 
+                    fileName = currDir + "_lock"
+                    if(not os.path.exists(fileName)): # if transaction not in progress peform update normally
+                            tempList = performUpdate(file, recordCount)
+                            newContent = tempList[0]
+                            recordCount = tempList[1]
+                            rewriteFile(file, newContent)
+                    else: # transaction in progress
+                        # read file to check if pid matches curr process 
+                        with open(fileName,"r") as f:
+                            content = f.read()
+                            if str(os.getpid()) in content: # if match
+                                # curr process has lock
+                                # store update but don't commit yet
+                                with open("updates", "w") as f:
+                                    # write table name so know which table to update later
+                                    f.write(tableName + '\n')
+                                    # write contents of updat
+                                    tempList = performUpdate(file, recordCount)
+                                    f.write(tempList[0]) # write update to file
+                                    recordCount = tempList[1]
+                            else:
+                                # curr process does not have lock
+                                raise FileExistsError
 
                 # success msgs
                 if(recordCount == 1):
@@ -487,9 +522,9 @@ while(userInput != ".EXIT".casefold()):
                 else:
                     recsModified = str(recordCount) + " records"
                 print(bcolors.OKGREEN + recsModified + " modified." + bcolors.ENDC)
-            except Exception as e:
-                print("Error in update: ")
-                print(e)
+            except FileExistsError:
+                print(bcolors.FAIL + "Error: Table " + tableName + " is locked!" + bcolors.ENDC)   
+
 
         elif("DELETE FROM" in userInput.upper()):
             try:
@@ -551,5 +586,49 @@ while(userInput != ".EXIT".casefold()):
                 print("Error in delete: ")
                 print(e)
 
+        elif("BEGIN TRANSACTION" in userInput.upper()):
+            try:
+                #print(os.getpid())
+                currDir = os.path.split(os.getcwd())[1]
+                fileName = currDir + "_lock"
+
+                if(os.path.exists(fileName)): # if lock file already exists
+                    pass # do nothing
+                else: # create file
+                    with open(fileName, "w") as f:
+                        # write pid of current process
+                        f.write(str(os.getpid()))
+                
+                print(bcolors.OKGREEN + "Transaction starts." + bcolors.ENDC) 
+            except Exception as e:
+                print("Error in begin transaction: ")
+                print(e)
+
+        elif("COMMIT" in userInput.upper()):
+            try:
+                # get lock file name
+                fileName = os.path.split(os.getcwd())[1] + "_lock"
+
+                with open(fileName,"r") as f:
+                        content = f.read()
+                        if str(os.getpid()) in content: # curr process has lock
+                            # perform updates and remove lock
+                            with open("updates", 'r+') as file: # open for r+w
+                                newContent = performUpdate(file, 0)[0]
+                                # first line is table name
+                                tableName = file.readline() 
+                                # rest of file is update to be made
+                                newContent = file.readlines()
+                                print(newContent)
+                                with open(tableName, 'r+') as updateFile:
+                                    rewriteFile(updateFile, newContent)
+                            os.remove("updates")
+                            os.remove(fileName)
+                            print(bcolors.OKGREEN + "Transaction committed." + bcolors.ENDC) 
+                        else: # curr process does not have lock
+                            # not allowed to commit
+                            raise AbortExcept
+            except AbortExcept:
+                print(bcolors.FAIL + "Transaction abort." + bcolors.ENDC)
 else:
     print(bcolors.OKGREEN + "All done." + bcolors.ENDC)
