@@ -36,10 +36,6 @@ def getInputVar(str, index):
     inputVar = str[:-1].split()[index]
     return inputVar
 
-# # gets list of vars given delimiting strings (start and end)
-# def getVarBtwnStrs(inputStr, start, end):
-#     return (inputStr.split(start))[1].split(end)[0].split(", ")
-
 # gets list of vars given delimiting string and lets you choose string to split on
 def getVarBtwnStrs(inputStr, start, end, splitOn):
     return (inputStr.split(start))[1].split(end)[0].split(splitOn)
@@ -493,7 +489,8 @@ while(userInput != ".EXIT".casefold()):
                     # check if transaction in progress
                     currDir = os.path.split(os.getcwd())[1] 
                     fileName = currDir + "_lock"
-                    if(not os.path.exists(fileName)): # if transaction not in progress peform update normally
+                    # if transaction not in progress peform update normally
+                    if(not os.path.exists(fileName)): 
                             tempList = performUpdate(file, recordCount)
                             newContent = tempList[0]
                             recordCount = tempList[1]
@@ -508,14 +505,13 @@ while(userInput != ".EXIT".casefold()):
                                 with open("updates", "w") as f:
                                     # write table name so know which table to update later
                                     f.write(tableName + '\n')
-                                    # write contents of updat
+                                    # write contents of update
                                     tempList = performUpdate(file, recordCount)
                                     f.write(tempList[0]) # write update to file
                                     recordCount = tempList[1]
                             else:
                                 # curr process does not have lock
                                 raise FileExistsError
-
                 # success msgs
                 if(recordCount == 1):
                     recsModified = "1 record"
@@ -524,7 +520,6 @@ while(userInput != ".EXIT".casefold()):
                 print(bcolors.OKGREEN + recsModified + " modified." + bcolors.ENDC)
             except FileExistsError:
                 print(bcolors.FAIL + "Error: Table " + tableName + " is locked!" + bcolors.ENDC)   
-
 
         elif("DELETE FROM" in userInput.upper()):
             try:
@@ -588,7 +583,7 @@ while(userInput != ".EXIT".casefold()):
 
         elif("BEGIN TRANSACTION" in userInput.upper()):
             try:
-                #print(os.getpid())
+                # generate name of lock file
                 currDir = os.path.split(os.getcwd())[1]
                 fileName = currDir + "_lock"
 
@@ -609,29 +604,29 @@ while(userInput != ".EXIT".casefold()):
                 # get lock file name
                 fileName = os.path.split(os.getcwd())[1] + "_lock"
 
+                # only commit if curr process has lock
                 with open(fileName,"r") as f:
-                        content = f.read()
-                        if str(os.getpid()) in content: # curr process has lock
-                            # perform updates and remove lock
-                            with open("updates", 'r+') as file: # open for r+w
-                               # newContent = performUpdate(file, 0)[0]
-                                # first line is table name
-                                tableName = file.readline().strip()
-                                # rest of file is update to be made
-                                # read rest of file into new str
-                                lines = file.readlines()
-                                newContent = "";
-                                for row in lines:
-                                    newContent += row.strip() + '\n'
-                                # rewrite table with that new str 
-                                with open(tableName, 'r+') as updateFile:
-                                    rewriteFile(updateFile, newContent)
-                            os.remove("updates")
-                            os.remove(fileName)
-                            print(bcolors.OKGREEN + "Transaction committed." + bcolors.ENDC) 
-                        else: # curr process does not have lock
-                            # not allowed to commit
-                            raise AbortExcept
+                    content = f.read()
+                    if str(os.getpid()) in content: # curr process has lock
+                        # perform updates and remove lock
+                        with open("updates", 'r+') as file:
+                            # first line is table name
+                            tableName = file.readline().strip()
+                            # rest of file is update to be made
+                            lines = file.readlines() # read rest of file into new str
+                            newContent = "";
+                            for row in lines:
+                                newContent += row.strip() + '\n'
+                            # rewrite table with new str 
+                            with open(tableName, 'r+') as updateFile:
+                                rewriteFile(updateFile, newContent)
+                        # del lock file and file containing now-commited updates
+                        os.remove("updates")
+                        os.remove(fileName)
+                        print(bcolors.OKGREEN + "Transaction committed." + bcolors.ENDC) 
+                    else: # curr process does not have lock
+                        # not allowed to commit
+                        raise AbortExcept
             except AbortExcept:
                 print(bcolors.FAIL + "Transaction abort." + bcolors.ENDC)
 else:
