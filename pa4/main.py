@@ -482,7 +482,7 @@ while(userInput != ".EXIT".casefold()):
                 
                 # parse command
                 # only works for singular args right now
-                tableName = getInputVar(userInput, 1)
+                tableName = getInputVar(userInput, 1).capitalize()
                 setCol = getInputVar(userInput, 3)
                 setVar = getInputVar(userInput, 5).replace("'", "")
                 whereLeft = getInputVar(userInput, 7)
@@ -614,12 +614,16 @@ while(userInput != ".EXIT".casefold()):
                         if str(os.getpid()) in content: # curr process has lock
                             # perform updates and remove lock
                             with open("updates", 'r+') as file: # open for r+w
-                                newContent = performUpdate(file, 0)[0]
+                               # newContent = performUpdate(file, 0)[0]
                                 # first line is table name
-                                tableName = file.readline() 
+                                tableName = file.readline().strip()
                                 # rest of file is update to be made
-                                newContent = file.readlines()
-                                print(newContent)
+                                # read rest of file into new str
+                                lines = file.readlines()
+                                newContent = "";
+                                for row in lines:
+                                    newContent += row.strip() + '\n'
+                                # rewrite table with that new str 
                                 with open(tableName, 'r+') as updateFile:
                                     rewriteFile(updateFile, newContent)
                             os.remove("updates")
